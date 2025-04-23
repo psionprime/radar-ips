@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Indoor Radar IPS Simulation</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #20232a; }
+    #info { position: absolute; top: 10px; left: 10px; color: #fff; font-family: sans-serif; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.152.2/build/three.module.js",
+      "three/": "https://unpkg.com/three@0.152.2/"
+    }
+  }
+  </script>
+  <script type="module" src="main.js"></script>
+</head>
+<body>
+  <div id="info">Use arrow keys to move the device.</div>
+  <script>
+  window.addEventListener('error', event => {
+    const info = document.getElementById('info');
+    info.style.color = 'red';
+    info.innerText = 'Error: ' + event.message;
+  });
+  window.addEventListener('unhandledrejection', event => {
+    const info = document.getElementById('info');
+    info.style.color = 'red';
+    info.innerText = 'Promise Error: ' + event.reason;
+  });
+  </script>
+</body>
+</html>

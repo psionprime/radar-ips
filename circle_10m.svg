@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" width="10" height="10">
+  <!-- 1 unit = 1 meter, circle diameter = 10 m -->
+  <circle cx="5" cy="5" r="5" stroke="black" stroke-width="0.05" fill="none"/>
+</svg>
