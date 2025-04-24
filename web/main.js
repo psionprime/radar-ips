@@ -20,10 +20,14 @@ scene.add(dirLight);
 
 // Ground plane (20m x 20m)
 const planeGeo = new THREE.PlaneGeometry(20, 20);
-const planeMat = new THREE.MeshStandardMaterial({ color: 0x808080, side: THREE.DoubleSide });
+const planeMat = new THREE.MeshStandardMaterial({ color: 0x808080, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
 const plane = new THREE.Mesh(planeGeo, planeMat);
 plane.rotation.x = -Math.PI/2;
 scene.add(plane);
+// Add a visible grid to the ground plane (20x20m, 5m spacing)
+const gridHelper = new THREE.GridHelper(20, 4, 0x888888, 0x444444);
+gridHelper.position.y = 0.01; // Slightly above the plane to avoid z-fighting
+scene.add(gridHelper);
 
 // Anchor positions (corners of 10x10)
 const anchorPositions = [
