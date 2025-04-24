@@ -123,30 +123,56 @@ const info = document.getElementById('info');
 // Keyboard controls
 const speed = 0.1;
 const keys = {};
+let followPath = false;
+document.getElementById('follow-path-checkbox').addEventListener('change', function(e) {
+  followPath = this.checked;
+  if (followPath && svgOverlayGroup && svgOverlayGroup.children.length > 0) {
+    // Find closest point on overlay to anchor 1
+    const anchor = anchorPositions[0];
+    let closest = null, minDist = Infinity;
+    svgOverlayGroup.children.forEach(child => {
+      const positions = child.geometry.attributes.position;
+      for (let i = 0; i < positions.count; i++) {
+        const x = positions.getX(i);
+        const y = positions.getY(i);
+        const z = positions.getZ(i);
+        const pt = new THREE.Vector3(x, y, z);
+        const dist = pt.distanceTo(anchor);
+        if (dist < minDist) { minDist = dist; closest = pt; }
+      }
+    });
+    if (closest) {
+      mobile.position.copy(closest);
+    }
+  }
+});
 window.addEventListener('keydown', e => {
+  if (followPath) return;
   keys[e.key] = true;
   // Home key resets mobile to origin
   if (e.key === 'Home') {
     mobile.position.set(0, 0, 0);
   }
 });
-window.addEventListener('keyup', e => { keys[e.key] = false; });
+window.addEventListener('keyup', e => { if (!followPath) keys[e.key] = false; });
 
 function updateMobile() {
-  // Ctrl+Up/Down moves in y (depth)
-  if ((keys['Control'] || keys['ControlLeft'] || keys['ControlRight']) && keys['ArrowUp']) {
-    mobile.position.y += speed;
+  if (!followPath) {
+    // Ctrl+Up/Down moves in y (depth)
+    if ((keys['Control'] || keys['ControlLeft'] || keys['ControlRight']) && keys['ArrowUp']) {
+      mobile.position.y += speed;
+    }
+    if ((keys['Control'] || keys['ControlLeft'] || keys['ControlRight']) && keys['ArrowDown']) {
+      mobile.position.y -= speed;
+    }
+    // Up/Down (without Ctrl) move in z (vertical)
+    if (!keys['Control'] && !keys['ControlLeft'] && !keys['ControlRight']) {
+      if (keys['ArrowUp']) mobile.position.z -= speed;
+      if (keys['ArrowDown']) mobile.position.z += speed;
+    }
+    if (keys['ArrowLeft'])  mobile.position.x -= speed;
+    if (keys['ArrowRight']) mobile.position.x += speed;
   }
-  if ((keys['Control'] || keys['ControlLeft'] || keys['ControlRight']) && keys['ArrowDown']) {
-    mobile.position.y -= speed;
-  }
-  // Up/Down (without Ctrl) move in z (vertical)
-  if (!keys['Control'] && !keys['ControlLeft'] && !keys['ControlRight']) {
-    if (keys['ArrowUp']) mobile.position.z -= speed;
-    if (keys['ArrowDown']) mobile.position.z += speed;
-  }
-  if (keys['ArrowLeft'])  mobile.position.x -= speed;
-  if (keys['ArrowRight']) mobile.position.x += speed;
   lines.forEach(({line, target}) => {
     line.geometry.setFromPoints([mobile.position, target]);
   });
