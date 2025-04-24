@@ -79,7 +79,7 @@ const mobileMat = new THREE.MeshPhysicalMaterial({
 });
 const mobile = new THREE.Mesh(mobileGeo, mobileMat);
 mobile.castShadow = true;
-mobile.position.set(0, 0.18, 0);
+mobile.position.set(0, 0, 0);
 scene.add(mobile);
 
 // Range lines
@@ -118,12 +118,28 @@ const info = document.getElementById('info');
 // Keyboard controls
 const speed = 0.1;
 const keys = {};
-window.addEventListener('keydown', e => { keys[e.key] = true; });
+window.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  // Home key resets mobile to origin
+  if (e.key === 'Home') {
+    mobile.position.set(0, 0, 0);
+  }
+});
 window.addEventListener('keyup', e => { keys[e.key] = false; });
 
 function updateMobile() {
-  if (keys['ArrowUp'])    mobile.position.z -= speed;
-  if (keys['ArrowDown'])  mobile.position.z += speed;
+  // Ctrl+Up/Down moves in y (depth)
+  if ((keys['Control'] || keys['ControlLeft'] || keys['ControlRight']) && keys['ArrowUp']) {
+    mobile.position.y += speed;
+  }
+  if ((keys['Control'] || keys['ControlLeft'] || keys['ControlRight']) && keys['ArrowDown']) {
+    mobile.position.y -= speed;
+  }
+  // Up/Down (without Ctrl) move in z (vertical)
+  if (!keys['Control'] && !keys['ControlLeft'] && !keys['ControlRight']) {
+    if (keys['ArrowUp']) mobile.position.z -= speed;
+    if (keys['ArrowDown']) mobile.position.z += speed;
+  }
   if (keys['ArrowLeft'])  mobile.position.x -= speed;
   if (keys['ArrowRight']) mobile.position.x += speed;
   lines.forEach(({line, target}) => {
@@ -155,7 +171,7 @@ function updateMobile() {
   // update info display
   const pos = mobile.position;
   info.innerHTML = `Use arrow keys to move.<br>Speed: ${(velocity.length()*1000).toFixed(1)} mm/s<br>Accel: ${(acceleration.length()*1000).toFixed(1)} mm/s²<br>` +
-    `Position: x=${(pos.x).toFixed(3)}, y=${(pos.y).toFixed(3)}, z=${(pos.z).toFixed(3)} m`;
+    `Position: x=${(pos.x).toFixed(3)}, y=${(pos.z).toFixed(3)}, z=${(pos.y).toFixed(3)} m`;
 
 }
 
