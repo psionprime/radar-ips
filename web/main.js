@@ -25,8 +25,9 @@ const plane = new THREE.Mesh(planeGeo, planeMat);
 plane.rotation.x = -Math.PI/2;
 scene.add(plane);
 // Add a visible grid to the ground plane (20x20m, 5m spacing)
-const gridHelper = new THREE.GridHelper(20, 4, 0x888888, 0x444444);
-gridHelper.position.y = 0.01; // Slightly above the plane to avoid z-fighting
+const gridHelper = new THREE.GridHelper(20, 4, 0xffffff, 0x888888); // 20m, 4 divisions = 5m spacing, white lines
+// Adjust grid to sit just above the plane
+gridHelper.position.y = 0.025;
 scene.add(gridHelper);
 
 // Anchor positions (corners of 10x10)
@@ -185,6 +186,109 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
 });
+
+// --- SVG Overlay Logic ---
+let svgOverlayGroup = null;
+const svgInput = document.getElementById('svg-file-selector');
+svgInput.addEventListener('change', function(e) {
+  if (svgOverlayGroup) {
+    scene.remove(svgOverlayGroup);
+    svgOverlayGroup = null;
+  }
+  if (!this.files || this.files.length === 0) return;
+  const file = this.files[0];
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const text = evt.target.result;
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(text, 'image/svg+xml');
+    const vb = svgDoc.documentElement.getAttribute('viewBox')?.split(/\s+/).map(Number) || [0,0,10,10];
+    const vbX = vb[0], vbY = vb[1], vbW = vb[2], vbH = vb[3];
+    svgOverlayGroup = new THREE.Group();
+    // Handle <circle>
+    svgDoc.querySelectorAll('circle').forEach(circle => {
+      const cx = parseFloat(circle.getAttribute('cx'));
+      const cy = parseFloat(circle.getAttribute('cy'));
+      const r = parseFloat(circle.getAttribute('r'));
+      const segments = 128;
+      const points = [];
+      for (let i = 0; i <= segments; i++) {
+        const theta = (i / segments) * 2 * Math.PI;
+        points.push(new THREE.Vector3(
+          cx + r * Math.cos(theta) - vbW/2,
+          0.05, // y slightly above grid
+          cy + r * Math.sin(theta) - vbH/2
+        ));
+      }
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const mat = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2 });
+      const mesh = new THREE.LineLoop(geometry, mat);
+      svgOverlayGroup.add(mesh);
+      console.log('SVG <circle> overlayed:', {cx, cy, r});
+    });
+    // Handle <path>
+    svgDoc.querySelectorAll('path').forEach(pathEl => {
+      const d = pathEl.getAttribute('d');
+      if (!d) return;
+      const shape = parseSVGPathToShape(d);
+      if (!shape) return;
+      const points = shape.getPoints(256).map(p => new THREE.Vector3(p.x - vbW/2, 0.05, p.y - vbH/2));
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const mat = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 2 });
+      const mesh = new THREE.Line(geometry, mat);
+      svgOverlayGroup.add(mesh);
+      console.log('SVG <path> overlayed:', {d});
+    });
+    svgOverlayGroup.name = 'svgOverlayGroup';
+    scene.add(svgOverlayGroup);
+  };
+  reader.readAsText(file);
+});
+
+// Minimal SVG path parser for M/L/C/Z (absolute only)
+function parseSVGPathToShape(d) {
+  try {
+    const shape = new THREE.Shape();
+    const cmd = /([MLCZmlcz])([^MLCZmlcz]*)/g;
+    let match, pen = {x:0, y:0}, start={x:0,y:0};
+    while ((match = cmd.exec(d))) {
+      const [_, op, params] = match;
+      const nums = params.trim().split(/[,\s]+/).map(Number).filter(n=>!isNaN(n));
+      if (op === 'M' || op === 'm') {
+        pen.x = (op==='M'?nums[0]:pen.x+nums[0]);
+        pen.y = (op==='M'?nums[1]:pen.y+nums[1]);
+        shape.moveTo(pen.x, pen.y);
+        start = {x: pen.x, y: pen.y};
+        nums.splice(0,2);
+        for (let i=0; i<nums.length; i+=2) {
+          pen.x = (op==='M'?nums[i]:pen.x+nums[i]);
+          pen.y = (op==='M'?nums[i+1]:pen.y+nums[i+1]);
+          shape.lineTo(pen.x, pen.y);
+        }
+      } else if (op === 'L' || op === 'l') {
+        for (let i=0; i<nums.length; i+=2) {
+          pen.x = (op==='L'?nums[i]:pen.x+nums[i]);
+          pen.y = (op==='L'?nums[i+1]:pen.y+nums[i+1]);
+          shape.lineTo(pen.x, pen.y);
+        }
+      } else if (op === 'C' || op === 'c') {
+        for (let i=0; i<nums.length; i+=6) {
+          const x1 = (op==='C'?nums[i]:pen.x+nums[i]);
+          const y1 = (op==='C'?nums[i+1]:pen.y+nums[i+1]);
+          const x2 = (op==='C'?nums[i+2]:pen.x+nums[i+2]);
+          const y2 = (op==='C'?nums[i+3]:pen.y+nums[i+3]);
+          const x = (op==='C'?nums[i+4]:pen.x+nums[i+4]);
+          const y = (op==='C'?nums[i+5]:pen.y+nums[i+5]);
+          shape.bezierCurveTo(x1, y1, x2, y2, x, y);
+          pen.x = x; pen.y = y;
+        }
+      } else if (op === 'Z' || op === 'z') {
+        shape.lineTo(start.x, start.y);
+      }
+    }
+    return shape;
+  } catch(e) { return null; }
+}
 
 // Animate
 function animate() {

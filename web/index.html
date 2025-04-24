@@ -6,6 +6,23 @@
   <style>
     body { margin: 0; overflow: hidden; background: #20232a; }
     #info { position: absolute; top: 10px; left: 10px; color: #fff; font-family: sans-serif; }
+    #svg-file-label {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 10;
+      background: rgba(32,35,42,0.85);
+      color: #fff;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-family: sans-serif;
+      border: 1px solid #444;
+      cursor: pointer;
+      display: inline-block;
+    }
+    #svg-file-label input[type="file"] {
+      display: none;
+    }
   </style>
   <script type="importmap">
   {
@@ -18,8 +35,21 @@
   <script type="module" src="main.js"></script>
 </head>
 <body>
+  <label id="svg-file-label" for="svg-file-selector">
+    <span style="padding-right:8px;">Select Path</span>
+    <input id="svg-file-selector" type="file" accept=".svg" title="Select SVG file" />
+  </label>
+  <div id="svg-file-name" style="position:absolute;top:44px;right:10px;z-index:10;color:#fff;font-family:sans-serif;font-size:0.95em;"></div>
   <div id="info">Use arrow keys to move the device.</div>
   <script>
+  document.getElementById('svg-file-selector').addEventListener('change', function(e) {
+    const fileDiv = document.getElementById('svg-file-name');
+    if (this.files && this.files.length > 0) {
+      fileDiv.textContent = this.files[0].name;
+    } else {
+      fileDiv.textContent = '';
+    }
+  });
   window.addEventListener('error', event => {
     const info = document.getElementById('info');
     info.style.color = 'red';
