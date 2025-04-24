@@ -68,8 +68,8 @@ anchorPositions.forEach((pos, i) => {
 // Mobile device as a 3D diamond (octahedron)
 const mobileGeo = new THREE.OctahedronGeometry(0.18);
 const mobileMat = new THREE.MeshPhysicalMaterial({
-  color: 0x00ffff,
-  emissive: 0x00ffff,
+  color: 0xe75480, // rose pink
+  emissive: 0xe75480,
   emissiveIntensity: 0.75,
   metalness: 0.7,
   roughness: 0.10,
