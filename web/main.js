@@ -40,6 +40,11 @@ const anchorPositions = [
 const anchorGeo = new THREE.SphereGeometry(0.1, 16, 16);
 const anchorMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
 const anchorLabels = ['1', '2', '3', '4'];
+
+// --- IMU Import and Instantiation ---
+import { IMU } from './autoMode.js';
+let imu = null;
+
 anchorPositions.forEach((pos, i) => {
   const m = new THREE.Mesh(anchorGeo, anchorMat);
   m.position.copy(pos);
@@ -66,26 +71,15 @@ anchorPositions.forEach((pos, i) => {
 });
 
 // Mobile device as a 3D diamond (octahedron)
-const mobileGeo = new THREE.OctahedronGeometry(0.18);
-const mobileMat = new THREE.MeshPhysicalMaterial({
-  color: 0xe75480, // rose pink
-  emissive: 0xe75480,
-  emissiveIntensity: 0.75,
-  metalness: 0.7,
-  roughness: 0.10,
-  transmission: 1.0,
-  thickness: 0.15,
-  ior: 2.4,
-  reflectivity: 1.0,
-  clearcoat: 1.0,
-  clearcoatRoughness: 0.05,
-  opacity: 0.95,
-  transparent: true
-});
+const mobileGeo = new THREE.SphereGeometry(0.18, 32, 32);
+const mobileMat = new THREE.MeshPhysicalMaterial({ color: 0xe75480, emissive: 0xe75480, emissiveIntensity: 0.75, metalness: 0.7, roughness: 0.1, transmission: 1, thickness: 0.15, ior: 2.4, reflectivity: 1, clearcoat: 1, clearcoatRoughness: 0.05, opacity: 0.95, transparent: true });
 const mobile = new THREE.Mesh(mobileGeo, mobileMat);
 mobile.castShadow = true;
 mobile.position.set(0, 0, 0);
 scene.add(mobile);
+
+// Instantiate IMU after mobile is created
+imu = new IMU(scene, mobile);
 
 // Range lines
 const lines = anchorPositions.map(pos => {
@@ -202,7 +196,9 @@ function updateMobile() {
   // update info display
   const pos = mobile.position;
   info.innerHTML = `Use arrow keys to move.<br>Speed: ${(velocity.length()*1000).toFixed(1)} mm/s<br>Accel: ${(acceleration.length()*1000).toFixed(1)} mm/s²<br>` +
-    `Position: x=${(pos.x).toFixed(3)}, y=${(pos.z).toFixed(3)}, z=${(pos.y).toFixed(3)} m`;
+    `Triangulated Position: x=${(pos.x).toFixed(3)}, y=${(pos.z).toFixed(3)}, z=${(pos.y).toFixed(3)} m` +
+    '<br>' +
+    (imu ? `IMU Position: x=${imu.getLocalPosition().x.toFixed(3)}, y=${imu.getLocalPosition().z.toFixed(3)}, z=${imu.getLocalPosition().y.toFixed(3)} m, heading=${imu.getHeading().toFixed(1)}°` : '');
 
 }
 
@@ -320,6 +316,7 @@ function parseSVGPathToShape(d) {
 function animate() {
   requestAnimationFrame(animate);
   updateMobile();
+  if (imu) imu.update();
   controls.update();
   renderer.render(scene, camera);
 }
