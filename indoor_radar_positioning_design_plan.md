@@ -4,7 +4,7 @@
 - 3D accuracy ≤ 10 mm  
 - Update rate ≥ 50–100 Hz  
 - Indoor range up to ~20 m  
-- Static anchors, known 3D positions  
+- Static beacons, known 3D positions  
 - Mobile receiver + tri-axis IMU (accel + gyro)  
 - Latency < 10 ms end-to-end  
 - Operate in multipath/NLOS environments  
@@ -12,7 +12,7 @@
 ## 2. System Architecture
 ```
 ┌─────────┐      Ethernet/PTP     ┌─────────┐
-│ Anchor1 │<────────────────────>│ Anchor2 │ …
+│ Beacon1 │<────────────────────>│ Beacon2 │ …
 └─────────┘                      └─────────┘
      ↑
   FMCW chirps
@@ -29,7 +29,7 @@
 ```
 
 ## 3. Hardware Components
-**Anchors (×4–6)**
+**Beacons (×4–6)**
 - mmWave FMCW transceiver (e.g. 60–67 GHz, B≥4 GHz)
 - High-stability clock + IEEE1588/PTP sync
 - Omnidirectional patch antenna
@@ -45,15 +45,15 @@
 ## 4. Waveform & Synchronization
 - **FMCW chirp**: B ≈ 4–7 GHz → coarse ΔR≈2–4 cm
 - **Phase-tracking** across chirps → fine ΔR < 1 cm
-- TDMA or PN-orthogonal chirp IDs so mobile can separate anchors
-- Anchors sync to ≤1 ns (PTP) → ToF accuracy ~0.3 mm
+- TDMA or PN-orthogonal chirp IDs so mobile can separate beacons
+- Beacons sync to ≤1 ns (PTP) → ToF accuracy ~0.3 mm
 
 ## 5. Signal Processing Pipeline
 1. **RF Rx → ADC**
 2. **Beat-freq FFT** (per chirp) → coarse range peaks
 3. **Phase-unwrap** beat tone over multiple chirps for fine range
 4. **(Optional) AoA** via MUSIC/ESPRIT on Rx array
-5. **Peak association** → one range (±phase) per anchor
+5. **Peak association** → one range (±phase) per beacon
 
 ## 6. Localization Algorithm
 - Solve 3D trilateration from ≥4 ranges
@@ -67,7 +67,7 @@
 - Constrains drift and fills between radar updates
 
 ## 8. Calibration & Survey
-- **Anchor positions**: survey to <1 mm (laser tracker/VICON)
+- **Beacon positions**: survey to <1 mm (laser tracker/VICON)
 - **Clock offsets** & antenna delays: offline calibration routine
 - **IMU biases**: static/dynamic calibration
 
@@ -75,7 +75,7 @@
 | Phase             | Weeks | Deliverables                       |
 |-------------------|-------|------------------------------------|
 | 1. Simulation     | 1–4   | MATLAB/Python radar+EKF models     |
-| 2. HW Prototype   | 5–12  | 1–2 anchors + mobile board         |
+| 2. HW Prototype   | 5–12  | 1–2 beacons + mobile board         |
 | 3. DSP & Algo     | 9–16  | FFT, phase-tracking, trilateration |
 | 4. Integration    | 15–20 | EKF + full data fusion on device   |
 | 5. Validation     | 20–24 | 10 mm tests vs. ground truth       |

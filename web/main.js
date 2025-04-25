@@ -30,26 +30,29 @@ const gridHelper = new THREE.GridHelper(20, 4, 0xffffff, 0x888888); // 20m, 4 di
 gridHelper.position.y = 0.025;
 scene.add(gridHelper);
 
-// Anchor positions (corners of 10x10)
-const anchorPositions = [
+// Beacon positions (corners of 10x10)
+const beaconPositions = [
   new THREE.Vector3(-10, 0, -10),
   new THREE.Vector3(10, 0, -10),
   new THREE.Vector3(10, 0, 10),
   new THREE.Vector3(-10, 0, 10),
 ];
-const anchorGeo = new THREE.SphereGeometry(0.1, 16, 16);
-const anchorMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-const anchorLabels = ['1', '2', '3', '4'];
+const beaconGeo = new THREE.SphereGeometry(0.1, 16, 16);
+const beaconMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+const beaconLabels = ['1', '2', '3', '4'];
 
 // --- IMU Import and Instantiation ---
 import { IMU } from './autoMode.js';
 let imu = null;
 
-anchorPositions.forEach((pos, i) => {
-  const m = new THREE.Mesh(anchorGeo, anchorMat);
+// Mobile bearing (radians, 0 = facing +Z)
+let mobileBearing = 0;
+
+beaconPositions.forEach((pos, i) => {
+  const m = new THREE.Mesh(beaconGeo, beaconMat);
   m.position.copy(pos);
   scene.add(m);
-  // Add anchor number label
+  // Add beacon number label
   const canvas = document.createElement('canvas');
   canvas.width = 64; canvas.height = 64;
   const ctx = canvas.getContext('2d');
@@ -59,8 +62,8 @@ anchorPositions.forEach((pos, i) => {
   ctx.fillStyle = '#fff';
   ctx.strokeStyle = '#222';
   ctx.lineWidth = 4;
-  ctx.strokeText(anchorLabels[i], 32, 32);
-  ctx.fillText(anchorLabels[i], 32, 32);
+  ctx.strokeText(beaconLabels[i], 32, 32);
+  ctx.fillText(beaconLabels[i], 32, 32);
   const tex = new THREE.CanvasTexture(canvas);
   const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false });
   const sprite = new THREE.Sprite(mat);
@@ -80,9 +83,14 @@ scene.add(mobile);
 
 // Instantiate IMU after mobile is created
 imu = new IMU(scene, mobile);
+// Remove IMU's purple arrow if it exists
+if (imu.arrow) {
+  scene.remove(imu.arrow);
+  imu.arrow = null;
+}
 
 // Range lines
-const lines = anchorPositions.map(pos => {
+const lines = beaconPositions.map(pos => {
   const geo = new THREE.BufferGeometry().setFromPoints([mobile.position, pos]);
   const mat = new THREE.LineBasicMaterial({ color: 0xffffff });
   const l = new THREE.Line(geo, mat);
@@ -92,7 +100,7 @@ const lines = anchorPositions.map(pos => {
 
 // Range circles for ToF simulation
 const segmentCount = 64;
-const circleLines = anchorPositions.map(pos => {
+const circleLines = beaconPositions.map(pos => {
   const geometry = new THREE.BufferGeometry();
   const positions = new Float32Array((segmentCount + 1) * 3);
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -108,8 +116,19 @@ let prevPosition = mobile.position.clone();
 let prevVelocity = new THREE.Vector3();
 let velocity = new THREE.Vector3();
 let acceleration = new THREE.Vector3();
-const imuArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), mobile.position.clone(), 1, 0x00ff00);
-scene.add(imuArrow);
+// Arrow showing mobile bearing (purple)
+const bearingArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), mobile.position.clone(), 1, 0x8000ff); // purple
+scene.add(bearingArrow);
+
+// Remove any old stationary purple ArrowHelpers (color 0x8000ff) except our bearingArrow
+scene.children = scene.children.filter(obj => {
+  if (obj instanceof THREE.ArrowHelper && obj !== bearingArrow && obj.cone && obj.line && obj.line.material && obj.line.material.color && obj.line.material.color.getHex && obj.line.material.color.getHex() === 0x8000ff) {
+    scene.remove(obj);
+    return false;
+  }
+  return true;
+});
+
 
 // HTML info element
 const info = document.getElementById('info');
@@ -121,8 +140,8 @@ let followPath = false;
 document.getElementById('follow-path-checkbox').addEventListener('change', function(e) {
   followPath = this.checked;
   if (followPath && svgOverlayGroup && svgOverlayGroup.children.length > 0) {
-    // Find closest point on overlay to anchor 1
-    const anchor = anchorPositions[0];
+    // Find closest point on overlay to beacon 1
+    const beacon = beaconPositions[0];
     let closest = null, minDist = Infinity;
     svgOverlayGroup.children.forEach(child => {
       const positions = child.geometry.attributes.position;
@@ -131,7 +150,7 @@ document.getElementById('follow-path-checkbox').addEventListener('change', funct
         const y = positions.getY(i);
         const z = positions.getZ(i);
         const pt = new THREE.Vector3(x, y, z);
-        const dist = pt.distanceTo(anchor);
+        const dist = pt.distanceTo(beacon);
         if (dist < minDist) { minDist = dist; closest = pt; }
       }
     });
@@ -143,33 +162,45 @@ document.getElementById('follow-path-checkbox').addEventListener('change', funct
 window.addEventListener('keydown', e => {
   if (followPath) return;
   keys[e.key] = true;
-  // Home key resets mobile to origin
+  // Home key resets mobile to origin and bearing
   if (e.key === 'Home') {
     mobile.position.set(0, 0, 0);
+    mobileBearing = 0;
   }
 });
 window.addEventListener('keyup', e => { if (!followPath) keys[e.key] = false; });
 
 function updateMobile() {
   if (!followPath) {
-    // Ctrl+Up/Down moves in y (depth)
-    if ((keys['Control'] || keys['ControlLeft'] || keys['ControlRight']) && keys['ArrowUp']) {
-      mobile.position.y += speed;
+    // Up/Down: move forward/backward along bearing
+    if (keys['ArrowUp']) {
+      mobile.position.x += speed * Math.sin(mobileBearing);
+      mobile.position.z += speed * Math.cos(mobileBearing);
     }
-    if ((keys['Control'] || keys['ControlLeft'] || keys['ControlRight']) && keys['ArrowDown']) {
-      mobile.position.y -= speed;
+    if (keys['ArrowDown']) {
+      mobile.position.x -= speed * Math.sin(mobileBearing);
+      mobile.position.z -= speed * Math.cos(mobileBearing);
     }
-    // Up/Down (without Ctrl) move in z (vertical)
-    if (!keys['Control'] && !keys['ControlLeft'] && !keys['ControlRight']) {
-      if (keys['ArrowUp']) mobile.position.z -= speed;
-      if (keys['ArrowDown']) mobile.position.z += speed;
+    // Left/Right: rotate bearing
+    if (keys['ArrowLeft']) {
+      mobileBearing += 0.05; // reverse sign for visual match
     }
-    if (keys['ArrowLeft'])  mobile.position.x -= speed;
-    if (keys['ArrowRight']) mobile.position.x += speed;
+    if (keys['ArrowRight']) {
+      mobileBearing -= 0.05;
+    }
+    // Optional: Clamp bearing to [0, 2PI]
+    if (mobileBearing < 0) mobileBearing += Math.PI * 2;
+    if (mobileBearing > Math.PI * 2) mobileBearing -= Math.PI * 2;
   }
   lines.forEach(({line, target}) => {
     line.geometry.setFromPoints([mobile.position, target]);
   });
+
+  // Update bearing arrow to point in current bearing direction
+  const bearingDir = new THREE.Vector3(Math.sin(mobileBearing), 0, Math.cos(mobileBearing));
+  bearingArrow.setDirection(bearingDir.normalize());
+  bearingArrow.position.copy(mobile.position);
+
 
   // update range circles
   circleLines.forEach(({ circle, pos }) => {
@@ -189,16 +220,12 @@ function updateMobile() {
   velocity.copy(mobile.position).sub(prevPosition);
   acceleration.copy(velocity).sub(prevVelocity);
   prevPosition.copy(mobile.position);
-  if (velocity.length() > 0.001) {
-    imuArrow.setDirection(velocity.clone().normalize());
-  }
-  imuArrow.position.copy(mobile.position);
   // update info display
   const pos = mobile.position;
   info.innerHTML = `Use arrow keys to move.<br>Speed: ${(velocity.length()*1000).toFixed(1)} mm/s<br>Accel: ${(acceleration.length()*1000).toFixed(1)} mm/s²<br>` +
     `Triangulated Position: x=${(pos.x).toFixed(3)}, y=${(pos.z).toFixed(3)}, z=${(pos.y).toFixed(3)} m` +
     '<br>' +
-    (imu ? `IMU Position: x=${imu.getLocalPosition().x.toFixed(3)}, y=${imu.getLocalPosition().z.toFixed(3)}, z=${imu.getLocalPosition().y.toFixed(3)} m, heading=${imu.getHeading().toFixed(1)}°` : '');
+    (imu ? `IMU Position: x=${imu.getLocalPosition().x.toFixed(3)}, y=${imu.getLocalPosition().z.toFixed(3)}, z=${imu.getLocalPosition().y.toFixed(3)} m, bearing=${((-mobileBearing * 180 / Math.PI + 360) % 360).toFixed(1)}°` : '');
 
 }
 

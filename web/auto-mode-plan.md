@@ -5,7 +5,7 @@
 
 ## Initial Requirements
 - **Trigger:**
-  - Auto Mode is enabled when the "Follow Path" checkbox is checked and after the mobile device has been moved to the closest point on the path to anchor 1.
+  - Auto Mode is enabled when the "Follow Path" checkbox is checked and after the mobile device has been moved to the closest point on the path to beacon 1.
 - **Integration:**
   - Auto Mode logic must be separated from manual movement and other simulation behaviors.
   - The `autoMode.js` module will expose an API for enabling, disabling, and checking the status of Auto Mode.
