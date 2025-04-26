@@ -41,3 +41,28 @@
 ---
 
 *This plan will be updated as requirements evolve.*
+
+---
+
+## Advice for Prompting Cascade for Future Changes
+
+To get the best results when requesting changes or new features from Cascade, consider these tips:
+
+- **Be Specific:** Clearly describe the behavior you want, including what should trigger it and how it should interact with existing features.
+- **Reference Existing Patterns:** If possible, mention functions, files, or UI elements that the change should use or affect. Cascade will always try to iterate on existing code rather than introduce new patterns.
+- **Describe Inputs and Outputs:** If adding new logic, specify what data should go in and what should come out, especially for new APIs or UI elements.
+- **State the Environment:** If your request is environment-specific (dev, test, prod), mention this so the solution fits your workflow.
+- **Request Tests or Validation:** If you want automated tests or a way to verify the change, ask for it explicitly.
+- **Ask for Explanations:** If you want to understand how or why something is being changed, request a summary or inline comments.
+- **Iterative Changes:** For large features, break your requests into smaller steps. Cascade can help you plan and implement features incrementally.
+- **UI/UX Details:** For UI changes, describe the desired user experience and visual feedback.
+- **Error Handling:** If robustness is important, ask for error handling or graceful fallback behavior.
+- **Sync and Commit:** If you want changes committed and pushed, request a git sync explicitly.
+
+**Example Prompts:**
+- "Update the auto mode so the mobile pauses at each beacon for 2 seconds."
+- "Add a test that ensures the mobile never leaves the SVG path in auto mode."
+- "Refactor the movement code to avoid duplication with manual controls."
+- "Show a visual indicator when auto mode is active."
+
+_Keep this section updated as you discover more effective ways to prompt Cascade for your workflow._

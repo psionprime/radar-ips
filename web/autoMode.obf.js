@@ -1,0 +1,1 @@
+export function enableAutoMode(_0x33ca73){}export function disableAutoMode(){}export function isAutoModeActive(){return![];}
